@@ -1,20 +1,32 @@
 import os
-from flask import Flask, flash, render_template, redirect, request
+import random
+from flask import Flask, flash, render_template, redirect
 from tasks import add
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', "super-secret")
 
+def store_result(x, y):
+    with open('results.txt', 'a') as file:
+        file.write(f'x: {x}, y: {y}\n')
 
 @app.route('/')
 def main():
     return render_template('main.html')
 
-
-@app.route('/add', methods=['POST'])
-def add_inputs():
-    x = int(request.form['x'] or 0)
-    y = int(request.form['y'] or 0)
+@app.route('/generate-and-add')
+def generate_and_add():
+    x = random.randint(0, 100)
+    y = random.randint(0, 100)
     add.delay(x, y)
-    flash("Your addition job has been submitted.")
-    return redirect('/')
+    store_result(x, y)
+    return "Random numbers generated and added."
+
+# Create a scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(generate_and_add, 'interval', minutes=2)
+scheduler.start()
+
+if __name__ == '__main__':
+    app.run()
